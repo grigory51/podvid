@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Generate version
+        id: version
+        run: |
+          VERSION="v0.1.$(date +%Y%m%d%H%M%S)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o dist/podvid-darwin-arm64  ./cmd/podvid/
+          GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o dist/podvid-darwin-amd64  ./cmd/podvid/
+          GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o dist/podvid-linux-amd64   ./cmd/podvid/
+          GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o dist/podvid-linux-arm64   ./cmd/podvid/
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/podvid-windows-amd64.exe ./cmd/podvid/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: dist/*

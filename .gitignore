@@ -1,0 +1,15 @@
+# Binaries
+podvid
+*.exe
+
+# Go
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.claude
+
+# OS
+.DS_Store
