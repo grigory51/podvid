@@ -3,8 +3,12 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/pkg/browser"
 
 	"github.com/grigory51/podvid/internal/podcast"
 )
@@ -12,13 +16,16 @@ import (
 type episodesModel struct {
 	svc      *podcast.Service
 	slug     string
+	name     string
 	episodes []podcast.EpisodeInfo
 	cursor   int
+	width    int
 	loading  bool
 	err      error
 }
 
 type episodesLoadedMsg struct {
+	name     string
 	episodes []podcast.EpisodeInfo
 	err      error
 }
@@ -35,15 +42,24 @@ func (m *episodesModel) Init() tea.Cmd {
 
 func (m *episodesModel) loadEpisodes() tea.Cmd {
 	return func() tea.Msg {
-		episodes, err := m.svc.ListEpisodes(context.Background(), m.slug)
-		return episodesLoadedMsg{episodes: episodes, err: err}
+		ctx := context.Background()
+		var name string
+		if info, err := m.svc.Get(ctx, m.slug); err == nil {
+			name = info.Name
+		}
+		episodes, err := m.svc.ListEpisodes(ctx, m.slug)
+		return episodesLoadedMsg{name: name, episodes: episodes, err: err}
 	}
 }
 
 func (m *episodesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+
 	case episodesLoadedMsg:
 		m.loading = false
+		m.name = msg.name
 		m.episodes = msg.episodes
 		m.err = msg.err
 		if m.cursor >= len(m.episodes) {
@@ -80,6 +96,11 @@ func (m *episodesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return switchScreenMsg{screen: screenAddEpisode, data: m.slug}
 			}
+		case "enter":
+			if len(m.episodes) > 0 {
+				url := m.episodes[m.cursor].AudioURL
+				browser.OpenURL(url)
+			}
 		case "e":
 			if len(m.episodes) > 0 {
 				ep := m.episodes[m.cursor]
@@ -102,7 +123,11 @@ func (m *episodesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *episodesModel) View() string {
-	s := titleStyle.Render(fmt.Sprintf("%s — Episodes", m.slug)) + "\n\n"
+		title := m.name
+	if title == "" {
+		title = m.slug
+	}
+	s := titleStyle.Render(fmt.Sprintf("%s — Episodes", title)) + "\n\n"
 
 	if m.loading {
 		s += subtitleStyle.Render("Loading episodes...") + "\n"
@@ -116,8 +141,25 @@ func (m *episodesModel) View() string {
 	if len(m.episodes) == 0 {
 		s += subtitleStyle.Render("No episodes yet. Press 'a' to add one.") + "\n"
 	} else {
+		width := m.width
+		if width == 0 {
+			width = 80
+		}
+		// fixed meta: "  " + date(17) + "  " + duration(7) = 28
+		// prefix: "> " or "  " (2) + style PaddingLeft(1 or 3) → effectively 3 total
+		metaWidth := 28
+		titleWidth := width - metaWidth - 3
+		if titleWidth < 20 {
+			titleWidth = 20
+		}
 		for i, ep := range m.episodes {
-			line := fmt.Sprintf("%-40s %s  %s", truncate(ep.Title, 40), ep.PubDate[:16], ep.Duration)
+			date := formatPubDate(ep.PubDate)
+			title := truncate(ep.Title, titleWidth)
+			padding := titleWidth - runeLen(title)
+			if padding < 0 {
+				padding = 0
+			}
+			line := title + strings.Repeat(" ", padding) + fmt.Sprintf("  %s  %7s", date, ep.Duration)
 			if i == m.cursor {
 				s += selectedStyle.Render("> "+line) + "\n"
 			} else {
@@ -126,13 +168,32 @@ func (m *episodesModel) View() string {
 		}
 	}
 
-	s += "\n" + helpStyle.Render("[a] Add  [e] Edit  [d] Delete  [esc] Back  [q] Quit")
+	s += "\n" + helpStyle.Render("[enter] Play  [a] Add  [e] Edit  [d] Delete  [esc] Back  [q] Quit")
 	return s
 }
 
+func formatPubDate(pubDate string) string {
+	t, err := time.Parse(time.RFC1123Z, pubDate)
+	if err != nil {
+		if len(pubDate) > 22 {
+			return pubDate[:22]
+		}
+		return pubDate
+	}
+	return t.Local().Format("02 Jan 2006 15:04")
+}
+
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	runes := []rune(s)
+	if len(runes) <= n {
 		return s
 	}
-	return s[:n-3] + "..."
+	if n <= 3 {
+		return string(runes[:n])
+	}
+	return string(runes[:n-3]) + "..."
+}
+
+func runeLen(s string) int {
+	return len([]rune(s))
 }
