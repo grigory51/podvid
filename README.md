@@ -25,6 +25,7 @@ Built for listening to video bloggers on an iPod Nano 7, but works with any podc
 
 - **TUI mode** — interactive terminal UI (Bubble Tea), just run `podvid`
 - **CLI mode** — scriptable commands for automation
+- **MCP mode** — expose podvid to AI agents over the Model Context Protocol (`podvid mcp`)
 - **Auto-provisioning** — installs yt-dlp automatically via Python venv if not found in PATH
 - **S3-compatible** — works with AWS S3, Yandex Object Storage, MinIO, Selectel, etc.
 - **iTunes RSS** — generates valid RSS 2.0 with iTunes extensions (cover art, duration, per-episode thumbnails)
@@ -84,6 +85,47 @@ podvid episode list <podcast-slug>
 podvid episode edit <podcast-slug> <episode-id> [--title "..."] [--description "..."]
 podvid episode delete <podcast-slug> <episode-id>
 ```
+
+## MCP mode
+
+`podvid mcp` starts a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio,
+letting an agent (e.g. Claude) perform the same operations you do in the TUI or CLI. It reads the
+same config file and S3 credentials.
+
+Register it with an MCP client. For Claude Code:
+
+```bash
+claude mcp add podvid -- podvid mcp
+```
+
+Or in a client config (`mcpServers`):
+
+```json
+{
+  "mcpServers": {
+    "podvid": {
+      "command": "podvid",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Exposed tools:
+
+| Tool | Description |
+| --- | --- |
+| `podcast_list` | List all podcasts |
+| `podcast_get` | Get one podcast by slug |
+| `podcast_create` | Create a podcast |
+| `podcast_edit` | Edit name/description |
+| `episode_list` | List a podcast's episodes |
+| `episode_add` | Download a video URL and add it as an episode |
+| `episode_edit` | Edit episode title/description |
+| `config_show` | Show current config (secrets masked) |
+
+Destructive operations (deleting podcasts/episodes, removing covers) are intentionally **not**
+exposed over MCP. Use the TUI or CLI for those.
 
 ## Configuration
 

@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/grigory51/podvid/internal/config"
-	"github.com/grigory51/podvid/internal/downloader"
 	"github.com/grigory51/podvid/internal/podcast"
 )
 
@@ -127,18 +126,10 @@ func (m *addEpisodeModel) startDownload(url string) tea.Cmd {
 			ch <- s
 		}
 
-		progress("Checking ffmpeg...")
-		if err := downloader.EnsureFFmpeg(); err != nil {
-			return addEpisodeDoneMsg{err: err}
-		}
-
-		progress("Checking yt-dlp...")
-		ytdlpPath, err := downloader.EnsureYtDlp(progress)
+		dl, err := podcast.NewDownloader(m.cfg, progress)
 		if err != nil {
 			return addEpisodeDoneMsg{err: err}
 		}
-
-		dl := downloader.New(ytdlpPath, m.cfg.Audio.Bitrate)
 
 		result, err := m.svc.AddEpisode(context.Background(), m.slug, url, dl, progress)
 		return addEpisodeDoneMsg{result: result, err: err}

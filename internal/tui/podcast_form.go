@@ -180,14 +180,7 @@ func (m *podcastFormModel) save() tea.Cmd {
 			if err != nil {
 				return podcastSavedMsg{err: fmt.Errorf("reading cover: %w", err)}
 			}
-			ct := "image/jpeg"
-			lower := strings.ToLower(coverPath)
-			if strings.HasSuffix(lower, ".png") {
-				ct = "image/png"
-			} else if strings.HasSuffix(lower, ".webp") {
-				ct = "image/webp"
-			}
-			if err := m.svc.SetCover(ctx, slug, data, ct); err != nil {
+			if err := m.svc.SetCover(ctx, slug, data, podcast.ContentTypeForImage(coverPath)); err != nil {
 				return podcastSavedMsg{err: fmt.Errorf("uploading cover: %w", err)}
 			}
 		}

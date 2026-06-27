@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grigory51/podvid/internal/config"
-	"github.com/grigory51/podvid/internal/downloader"
+	"github.com/grigory51/podvid/internal/podcast"
 )
 
 func init() {
@@ -31,24 +31,18 @@ func episodeAddCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			slug, videoURL := args[0], args[1]
 
-			if err := downloader.EnsureFFmpeg(); err != nil {
-				return err
-			}
-
-			ytdlpPath, err := downloader.EnsureYtDlp(func(s string) {
-				fmt.Println(s)
-			})
-			if err != nil {
-				return err
-			}
-
 			svc, err := newPodcastService()
 			if err != nil {
 				return err
 			}
 
 			cfg, _ := config.Load(cfgPath)
-			dl := downloader.New(ytdlpPath, cfg.Audio.Bitrate)
+			dl, err := podcast.NewDownloader(cfg, func(s string) {
+				fmt.Println(s)
+			})
+			if err != nil {
+				return err
+			}
 
 			result, err := svc.AddEpisode(context.Background(), slug, videoURL, dl, func(s string) {
 				fmt.Println(s)

@@ -9,7 +9,6 @@ import (
 
 	"github.com/grigory51/podvid/internal/config"
 	"github.com/grigory51/podvid/internal/podcast"
-	"github.com/grigory51/podvid/internal/storage"
 )
 
 func init() {
@@ -47,11 +46,7 @@ func podcastCreateCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("reading cover image: %w", err)
 				}
-				ct := "image/jpeg"
-				if len(cover) > 4 && cover[len(cover)-4:] == ".png" {
-					ct = "image/png"
-				}
-				if err := svc.SetCover(context.Background(), info.Slug, data, ct); err != nil {
+				if err := svc.SetCover(context.Background(), info.Slug, data, podcast.ContentTypeForImage(cover)); err != nil {
 					return fmt.Errorf("uploading cover: %w", err)
 				}
 			}
@@ -129,11 +124,7 @@ func podcastEditCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("reading cover image: %w", err)
 				}
-				ct := "image/jpeg"
-				if len(cover) > 4 && cover[len(cover)-4:] == ".png" {
-					ct = "image/png"
-				}
-				if err := svc.SetCover(context.Background(), slug, data, ct); err != nil {
+				if err := svc.SetCover(context.Background(), slug, data, podcast.ContentTypeForImage(cover)); err != nil {
 					return fmt.Errorf("uploading cover: %w", err)
 				}
 			}
@@ -179,10 +170,5 @@ func newPodcastService() (*podcast.Service, error) {
 		return nil, fmt.Errorf("invalid config: %w\nRun 'podvid config init' to set up", err)
 	}
 
-	s3Client, err := storage.NewS3Client(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return podcast.NewService(s3Client, cfg), nil
+	return podcast.NewServiceFromConfig(cfg)
 }

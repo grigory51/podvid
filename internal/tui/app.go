@@ -7,7 +7,6 @@ import (
 
 	"github.com/grigory51/podvid/internal/config"
 	"github.com/grigory51/podvid/internal/podcast"
-	"github.com/grigory51/podvid/internal/storage"
 )
 
 type screen int
@@ -25,7 +24,6 @@ type appModel struct {
 	cfg     *config.Config
 	cfgPath string
 	svc     *podcast.Service
-	s3      *storage.S3Client
 
 	current screen
 	screens map[screen]tea.Model
@@ -72,13 +70,12 @@ func newAppModel(cfg *config.Config, cfgPath string) appModel {
 }
 
 func (m *appModel) initService() {
-	s3Client, err := storage.NewS3Client(m.cfg)
+	svc, err := podcast.NewServiceFromConfig(m.cfg)
 	if err != nil {
 		m.err = err
 		return
 	}
-	m.s3 = s3Client
-	m.svc = podcast.NewService(s3Client, m.cfg)
+	m.svc = svc
 }
 
 func (m appModel) Init() tea.Cmd {
