@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/grigory51/podvid/internal/config"
+	"github.com/grigory51/podvid/internal/downloader"
 	"github.com/grigory51/podvid/internal/podcast"
 )
 
@@ -37,12 +38,23 @@ func newAddEpisode(svc *podcast.Service, cfg *config.Config, slug string) *addEp
 	ti.CharLimit = 500
 	ti.Width = 60
 
-	return &addEpisodeModel{
+	m := &addEpisodeModel{
 		svc:      svc,
 		cfg:      cfg,
 		slug:     slug,
 		urlInput: ti,
 	}
+
+	// Surface a missing ffmpeg immediately when the user opens the add-episode
+	// screen, rather than after they have typed and submitted a URL. The check
+	// is a cheap PATH lookup; the heavier yt-dlp provisioning still happens on
+	// download.
+	if err := downloader.EnsureFFmpeg(); err != nil {
+		m.err = err
+		m.done = true
+	}
+
+	return m
 }
 
 func (m *addEpisodeModel) Init() tea.Cmd {
