@@ -16,6 +16,9 @@ var rootCmd = &cobra.Command{
 	Use:   "podvid",
 	Short: "Video to Podcast converter",
 	Long:  "podvid converts videos from VK Video and RuTube into podcast episodes, uploads to S3, and manages RSS feeds.",
+	// Ошибки выполнения печатает Execute; usage при них не нужен.
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Load(cfgPath)
 		if err != nil {

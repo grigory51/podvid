@@ -111,6 +111,28 @@ Or in a client config (`mcpServers`):
 }
 ```
 
+An MCP client starts the server with its own environment, so the config file is not the only option —
+pass the bucket and credentials through `env` and no `config.yaml` is needed at all:
+
+```json
+{
+  "mcpServers": {
+    "podvid": {
+      "command": "podvid",
+      "args": ["mcp"],
+      "env": {
+        "PODVID_S3_ENDPOINT": "https://storage.yandexcloud.net",
+        "PODVID_S3_REGION": "ru-central1",
+        "PODVID_S3_BUCKET": "my-podcasts",
+        "PODVID_S3_ACCESS_KEY": "...",
+        "PODVID_S3_SECRET_KEY": "...",
+        "PODVID_S3_PUBLIC_BASE_URL": "https://storage.yandexcloud.net/my-podcasts"
+      }
+    }
+  }
+}
+```
+
 Exposed tools:
 
 | Tool | Description |
@@ -144,7 +166,22 @@ audio:
   bitrate: "192k"
 ```
 
-Override any value via environment variables (`PODVID_S3_BUCKET`, `PODVID_S3_ACCESS_KEY`, ...) or CLI flags.
+Every value can be overridden by an environment variable or a CLI flag. Environment variables win over
+the config file, and the file is optional — set the variables and podvid runs without it.
+
+| Variable | Config key |
+| --- | --- |
+| `PODVID_S3_ENDPOINT` | `s3.endpoint` |
+| `PODVID_S3_REGION` | `s3.region` |
+| `PODVID_S3_BUCKET` | `s3.bucket` |
+| `PODVID_S3_ACCESS_KEY` | `s3.access_key` |
+| `PODVID_S3_SECRET_KEY` | `s3.secret_key` |
+| `PODVID_S3_PUBLIC_BASE_URL` | `s3.public_base_url` |
+| `PODVID_AUDIO_BITRATE` | `audio.bitrate` |
+
+```bash
+PODVID_S3_BUCKET=other-bucket podvid mcp
+```
 
 ## How it works
 
